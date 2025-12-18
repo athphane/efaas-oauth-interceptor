@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>eFaas Oauth Interceptor</title>
+  <link rel="stylesheet" href="popup.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+
+<body>
+  <div class="app-container">
+    <header class="app-header">
+      <h1>eFaas Oauth Interceptor</h1>
+    </header>
+
+    <main>
+      <section class="card">
+        <div class="toggle-wrapper">
+          <span class="toggle-label">Intercept
+            Requests</span>
+          <label class="switch" title="Enable/Disable Interception">
+            <input type="checkbox" id="interception-toggle">
+            <span class="slider round"></span>
+          </label>
+        </div>
+      </section>
+      <section class="card">
+        <div class="form-group">
+          <label for="user-type">User Type</label>
+          <div class="select-wrapper">
+            <select id="user-type" class="form-control">
+              <option value="">Select Type...</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="account-select">Account</label>
+          <div class="select-wrapper">
+            <select id="account-select" class="form-control" disabled>
+              <option value="">Select Account...</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="action-grid">
+          <button id="fill-credentials" class="btn btn-primary" disabled>Fill Credentials</button>
+          <button id="set-default" class="btn btn-secondary" disabled>Set as Default</button>
+          <button id="random-account" class="btn btn-warning">Random Account</button>
+          <button id="fill-default" class="btn btn-info">Fill Default</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="section-title">Data Management</h2>
+        <p class="section-desc">Upload CSV data to enable account auto-fill.</p>
+
+        <div class="form-group">
+          <input type="file" id="csv-upload" accept=".csv" class="form-control" style="padding: 6px;">
+        </div>
+
+        <div id="data-status-msg" style="margin-bottom: 12px; font-size: 13px; color: var(--text-secondary);">
+          Checking data...
+        </div>
+
+        <button id="clear-data-btn" class="btn btn-outline btn-small" style="width: 100%;">Clear Stored Data</button>
+        <button id="open-tab-btn" class="btn btn-text"
+          style="font-size: 11px; margin-top: 4px; text-decoration: underline;">Open in full tab (issues
+          uploading?)</button>
+      </section>
+
+      <section class="card">
+        <h2 class="section-title">Debug Tools</h2>
+        <div class="action-grid small-grid">
+          <button id="view-oauth" class="btn btn-outline">View Last OAuth</button>
+          <button id="view-authorize" class="btn btn-outline">View Last Authorize</button>
+        </div>
+      </section>
+
+      <section class="card domain-map-section">
+        <h2 class="section-title">Domain Map</h2>
+        <p class="section-desc">Redirect source domains to testing domains.</p>
+
+        <div class="table-container">
+          <table id="domain-map-table">
+            <thead>
+              <tr>
+                <th>Source</th>
+                <th>Target</th>
+                <th class="action-col"></th>
+              </tr>
+            </thead>
+            <tbody id="domain-map-tbody">
+              <!-- Mappings injected here -->
+            </tbody>
+          </table>
+        </div>
+
+        <div class="add-mapping-form">
+          <input type="text" id="map-source" class="form-control" placeholder="Source (e.g. portal.mv)">
+          <input type="text" id="map-target" class="form-control" placeholder="Target (e.g. localhost:3000)">
+          <button id="add-mapping-btn" class="btn btn-small btn-primary">Add</button>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <button id="close-btn" class="btn btn-text">Close Extension</button>
+    </footer>
+  </div>
+  <script src="popup.js"></script>
+</body>
+
+</html>
