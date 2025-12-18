@@ -30,9 +30,11 @@ The Efaas Developer Assistant helps developers test OAuth 2.0 flows, manage test
 
 ### 1. Set Up Your Test Accounts
 To use the autofill feature, you need to load your test accounts:
+- When you receive the Efaas test credentials (typically an Excel file), **save each sheet as a separate CSV file**.
 - Open the extension popup by clicking its icon.
-- Use the **"Upload CSV"** button to load your account data.
-- Your data is stored locally in your browser and used to populate the account selection menus.
+- Use the **"Upload CSV"** button to upload each CSV file you created.
+- The extension will automatically categorize them based on the content.
+- Your data is stored securely in your browser's local storage.
 
 ### 2. Autofilling Login Forms
 - Navigate to an Efaas login page.
