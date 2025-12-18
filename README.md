@@ -22,9 +22,24 @@ The Efaas Developer Assistant helps developers test OAuth 2.0 flows, manage test
 
 ## 🛠️ Installation
 
-1. Download the latest release `.xpi` file from the [Releases](https://github.com/athphane/efaas-oauth-interceptor/releases) page.
-2. Drag and drop the file into your Firefox browser.
-3. Follow the prompts to install the extension.
+### For Chrome / Chromium
+1. Download or clone this repository.
+2. Run `.\build.ps1` (Windows) or `./build.sh` (Linux/Mac) to generate the `dist` folder.
+3. Open Chrome and navigate to `chrome://extensions`.
+4. Enable **Developer mode** in the top right.
+5. Click **Load unpacked** and select the `dist/chrome` folder.
+
+### For Official Firefox
+Since the extension is unsigned, you must load it as a temporary add-on:
+1. Open Firefox and navigate to `about:debugging#/runtime/this-firefox`.
+2. Click **Load Temporary Add-on...**.
+3. Navigate to the `dist/firefox` folder and select the `manifest.json` file.
+4. The extension is now active until you restart Firefox.
+
+### For Floorp / Firefox Developer Edition
+1. Download the `efaas-developer-ext-firefox.xpi` from the `dist` folder.
+2. Drag and drop it into the browser or install it via `about:addons`.
+
 
 ## 📖 How to Use
 

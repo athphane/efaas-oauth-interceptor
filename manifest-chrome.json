@@ -1,19 +1,20 @@
 {
-  "manifest_version": 2,
+  "manifest_version": 3,
   "name": "eFaas Oauth Interceptor",
-  "version": "1.0",
+  "version": "1.1",
   "description": "Helper extension to autofill and redirect eFaas oauth requests for local development and testing purposes only.",
   "permissions": [
     "activeTab",
     "storage",
-    "webRequest",
-    "webRequestBlocking",
     "notifications",
+    "scripting"
+  ],
+  "host_permissions": [
     "*://developer.gov.mv/*",
     "*://developer.egov.mv/*",
     "https://efaas.gov.mv/*"
   ],
-  "browser_action": {
+  "action": {
     "default_popup": "popup.html",
     "default_title": "eFaas Oauth Interceptor"
   },
@@ -31,19 +32,19 @@
     }
   ],
   "background": {
-    "scripts": [
-      "background.js"
-    ]
+    "service_worker": "background.js"
   },
   "icons": {
     "48": "icon.png"
   },
-  "applications": {
-    "gecko": {
-      "id": "efaas-test-autofill@yourdomain.com"
-    }
-  },
   "web_accessible_resources": [
-    "interceptor.js"
+    {
+      "resources": [
+        "interceptor.js"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
   ]
 }

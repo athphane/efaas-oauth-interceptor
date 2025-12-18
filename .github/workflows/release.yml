@@ -29,12 +29,16 @@ jobs:
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
-          files: ./efaas-developer-ext.xpi
+          files: |
+            dist/efaas-developer-ext-chrome.zip
+            dist/efaas-developer-ext-firefox.xpi
           body: |
             Efaas Developer Assistant Release
-            - Automated build of the extension
-            - Download the .xpi file below and drag into Firefox to install.
+            - Automated cross-browser builds
+            - **Chrome**: Download `efaas-developer-ext-chrome.zip`, extract it, and load as an unpacked extension.
+            - **Firefox**: Download `efaas-developer-ext-firefox.xpi` and load it as a temporary add-on in `about:debugging`.
           draft: false
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

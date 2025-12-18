@@ -1,4 +1,8 @@
+if (typeof browser === "undefined") {
+  var browser = chrome;
+}
 document.addEventListener('DOMContentLoaded', function () {
+
   const userTypeSelect = document.getElementById('user-type');
   const accountSelect = document.getElementById('account-select');
   const fillButton = document.getElementById('fill-credentials');

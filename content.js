@@ -1,5 +1,9 @@
 // Content script to fill Efaas login forms and intercept OAuth callbacks
+if (typeof browser === "undefined") {
+  var browser = chrome;
+}
 (function () {
+
   // Flag to prevent multiple executions
   if (window.efaasExtensionProcessed) {
     return;
@@ -139,94 +143,12 @@
   // Function to inject a script into the Main World to intercept form submissions
   function injectInterceptionScript() {
     const script = document.createElement('script');
-    script.textContent = `
-      (function() {
-        console.log('Efaas Extension: Initializing interception script in Main World');
-        
-        // Save original submit function
-        const originalSubmit = HTMLFormElement.prototype.submit;
-        
-        // Override submit
-        HTMLFormElement.prototype.submit = function() {
-          console.log('Efaas Extension: Intercepted form.submit() call');
-          
-          // Check if this looks like the OAuth callback form
-          const codeInput = this.querySelector('input[name="code"]');
-          const stateInput = this.querySelector('input[name="state"]');
-          
-          if (codeInput && stateInput) {
-            // CHECK FOR DISABLE FLAG
-            // Use hasAttribute for robustness
-            if (document.documentElement.hasAttribute('data-efaas-interception-disabled')) {
-               console.log('Efaas Extension: Interception skipped (disabled by user) - override');
-               return originalSubmit.apply(this, arguments);
-            }
-
-            console.log('Efaas Extension: Detected OAuth callback form submission');
-            
-            // Extract data
-            const formData = {};
-            const inputs = this.querySelectorAll('input');
-            inputs.forEach(input => {
-              if (input.name) formData[input.name] = input.value;
-            });
-            
-            // Dispatch event to content script
-            const event = new CustomEvent('efaasOAuthIntercepted', {
-              detail: {
-                formData: formData,
-                originalAction: this.action
-              }
-            });
-            window.dispatchEvent(event);
-            
-            // STOP the submission
-            return;
-          }
-          
-          // If not our form, proceed normally
-          return originalSubmit.apply(this, arguments);
-        };
-        
-        // Also try to intercept standard submit events (user clicks)
-        // Also try to intercept standard submit events (user clicks)
-        window.addEventListener('submit', function(e) {
-          const form = e.target;
-          const codeInput = form.querySelector && form.querySelector('input[name="code"]');
-          const stateInput = form.querySelector && form.querySelector('input[name="state"]');
-          
-          if (codeInput && stateInput) {
-            // CHECK FOR DISABLE FLAG FIRST
-            // Use hasAttribute for robustness
-            if (document.documentElement.hasAttribute('data-efaas-interception-disabled')) {
-               console.log('Efaas Extension: Interception skipped (disabled by user) - listener');
-               return; // Allow default submission
-            }
-
-            console.log('Efaas Extension: Intercepted submit event');
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            
-            const formData = {};
-            const inputs = form.querySelectorAll('input');
-            inputs.forEach(input => {
-              if (input.name) formData[input.name] = input.value;
-            });
-            
-            const event = new CustomEvent('efaasOAuthIntercepted', {
-              detail: {
-                formData: formData,
-                originalAction: form.action
-              }
-            });
-            window.dispatchEvent(event);
-          }
-        }, true); // Capture phase matches earlier
-        
-      })();
-    `;
+    script.src = browser.runtime.getURL('interceptor.js');
+    script.onload = function () {
+      this.remove();
+    };
     (document.head || document.documentElement).appendChild(script);
-    // script.remove(); // Optional: remove trace
+    console.log('Efaas Extension: Injected interceptor.js');
   }
 
   // Listen for the interception event from the Main World

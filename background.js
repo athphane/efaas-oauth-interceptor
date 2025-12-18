@@ -1,4 +1,10 @@
-// Background script to handle popup and content script communication
+// Background script for Manifest V3
+// Compatible with Chrome, Edge, and Firefox
+
+// Polyfill browser API for Chrome
+if (typeof browser === "undefined") {
+  var browser = chrome;
+}
 
 // Default account configuration
 const DEFAULT_ACCOUNT_CONFIG = {
@@ -12,63 +18,88 @@ async function getAccountDB() {
   return result.accountUserDB || {};
 }
 
-// Add browser action to allow clicking the extension icon for quick fill
-browser.browserAction.onClicked.addListener((tab) => {
+// Function to check for OAuth form (to be executed in tab)
+function checkForOAuthForm() {
+  const forms = document.querySelectorAll('form[method="post"]');
+  for (let form of forms) {
+    const codeInput = form.querySelector('input[name="code"]');
+    const idTokenInput = form.querySelector('input[name="id_token"]');
+    const stateInput = form.querySelector('input[name="state"]');
+    if (codeInput && idTokenInput && stateInput) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Add action click listener (replaces browserAction in V3)
+const actionAPI = browser.action || browser.browserAction;
+
+actionAPI.onClicked.addListener((tab) => {
   // Check if the current tab is on an allowed domain
   const allowedDomains = ['developer.gov.mv', 'developer.egov.mv'];
   const tabUrl = new URL(tab.url);
   const isAllowedDomain = allowedDomains.some(domain => tabUrl.hostname === domain || tabUrl.hostname.endsWith('.' + domain));
 
   if (isAllowedDomain && tabUrl.pathname.startsWith('/efaas')) {
-    // Check if this is an OAuth callback page
-    browser.tabs.executeScript(tab.id, {
-      code: `
-        (${function checkForOAuthForm() {
-          const forms = document.querySelectorAll('form[method="post"]');
-          for (let form of forms) {
-            const codeInput = form.querySelector('input[name="code"]');
-            const idTokenInput = form.querySelector('input[name="id_token"]');
-            const stateInput = form.querySelector('input[name="state"]');
-            if (codeInput && idTokenInput && stateInput) {
-              return true;
-            }
-          }
-          return false;
-        }.toString()})();
-      `
-    }).then((results) => {
-      if (results && results[0]) {
-        console.log('Detected OAuth callback page');
-        // We already have the content script handling this, so just log it
-      } else {
-        // Regular page, fill with default account
-        browser.runtime.sendMessage({ action: 'getDefaultAccount' }).then(response => {
-          if (response.account) {
-            // Send credentials to content script to fill the form
-            browser.tabs.sendMessage(tab.id, {
-              action: 'fillCredentials',
-              credentials: response.account
-            });
-          } else if (response.error) {
-            console.error('Error getting default account:', response.error);
-            // Verify if we can show a notification or popup to warn user no data is loaded
-            browser.notifications.create({
-              type: 'basic',
-              iconUrl: 'icon.png',
-              title: 'No Account Data',
-              message: 'Please click the extension icon and upload a CSV file to use this feature.'
-            });
-          }
-        }).catch(console.error);
-      }
-    }).catch(console.error);
+    // Check if we have the scripting API (MV3) or need to fallback to tabs (MV2)
+    if (browser.scripting && browser.scripting.executeScript) {
+      // MV3: Use scripting API
+      browser.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: checkForOAuthForm
+      }).then((injectionResults) => {
+        const isOAuthPage = injectionResults && injectionResults[0] && injectionResults[0].result;
+        handleOAuthCheckResult(tab, isOAuthPage);
+      }).catch(err => {
+        console.error('Error executing script (MV3):', err);
+      });
+    } else {
+      // MV2: Use tabs API
+      const code = `(${checkForOAuthForm.toString()})();`;
+      browser.tabs.executeScript(tab.id, {
+        code: code
+      }).then((results) => {
+        const isOAuthPage = results && results[0];
+        handleOAuthCheckResult(tab, isOAuthPage);
+      }).catch(err => {
+        console.error('Error executing script (MV2):', err);
+      });
+    }
   } else {
-    // Not on an allowed domain, show an informative message in console
-    console.log('Extension not active on this domain. Only works on Efaas domains (developer.gov.mv/efaas or developer.egov.mv/efaas).');
-    // Open the popup so the user can see available options
-    browser.browserAction.openPopup && browser.browserAction.openPopup();
+    console.log('Extension not active on this domain.');
+    if (actionAPI.openPopup) {
+      actionAPI.openPopup();
+    }
   }
 });
+
+function handleOAuthCheckResult(tab, isOAuthPage) {
+  if (isOAuthPage) {
+    console.log('Detected OAuth callback page');
+    // We already have the content script handling this
+  } else {
+    // Regular page, fill with default account
+    browser.runtime.sendMessage({ action: 'getDefaultAccount' }).then(response => {
+      if (response.account) {
+        browser.tabs.sendMessage(tab.id, {
+          action: 'fillCredentials',
+          credentials: response.account
+        });
+      } else if (response.error) {
+        console.error('Error getting default account:', response.error);
+        browser.notifications.create({
+          type: 'basic',
+          iconUrl: 'icon.png',
+          title: 'No Account Data',
+          message: 'Please click the extension icon and upload a CSV file to use this feature.'
+        });
+      }
+    }).catch(console.error);
+  }
+}
+
+
 
 
 
@@ -231,69 +262,36 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
       console.log('Could not create notification:', error);
     });
   }
-  // Handle existing message types...
-  else if (request.action === 'getAccountTypes') {
-    // Return the available account types
-    const accountTypes = Object.keys(testAccounts);
-    sendResponse({ accountTypes: accountTypes });
-  }
-  else if (request.action === 'getAccountsByType') {
-    // Return accounts for a specific type
-    const accounts = testAccounts[request.userType] || [];
-    sendResponse({ accounts: accounts });
-  }
-  else if (request.action === 'getRandomAccount') {
-    // Return a random account from any type
-    const randomAccount = getRandomAccount();
-    sendResponse({ account: randomAccount.account, userType: randomAccount.userType });
-  }
-  else if (request.action === 'getDefaultAccount') {
-    // Return the default account
-    const defaultAccount = getAccountByUsername(DEFAULT_ACCOUNT_CONFIG.username);
-    if (defaultAccount) {
-      sendResponse({ account: defaultAccount.account, userType: defaultAccount.userType });
-    } else {
-      // If default account not found, return the first account of the default type
-      const accounts = testAccounts[DEFAULT_ACCOUNT_CONFIG.userType] || [];
-      if (accounts.length > 0) {
-        sendResponse({ account: accounts[0], userType: DEFAULT_ACCOUNT_CONFIG.userType });
-      } else {
-        sendResponse({ error: "No accounts available for the default user type" });
-      }
-    }
-  }
   else if (request.action === 'getUserPreference') {
     // Get user's saved preference
     browser.storage.local.get(['preferredAccount']).then((result) => {
-      if (result.preferredAccount) {
-        sendResponse({ preferredAccount: result.preferredAccount });
-      } else {
-        // If no preference set, return null
-        sendResponse({ preferredAccount: null });
-      }
+      sendResponse({ preferredAccount: result.preferredAccount || null });
     });
+    return true;
   }
   else if (request.action === 'saveUserPreference') {
     // Save user's preferred account
     browser.storage.local.set({ preferredAccount: request.account }).then(() => {
       sendResponse({ success: true });
     });
+    return true;
   }
   else if (request.action === 'getLastOAuthCallback') {
     // Get the last captured OAuth callback data
-    browser.storage.local.get(['lastOAuthCallback', 'oauthCallbackData']).then((result) => {
-      const data = result.lastOAuthCallback || result.oauthCallbackData || null;
-      sendResponse({ oauthData: data });
+    browser.storage.local.get(['lastOAuthCallback']).then((result) => {
+      sendResponse({ oauthData: result.lastOAuthCallback || null });
     });
+    return true;
   }
   else if (request.action === 'getLastAuthorizeData') {
-    // Get the last captured authorize endpoint data (both from content script and web request)
-    browser.storage.local.get(['lastAuthorizePageReplacement', 'lastAuthorizeFormData', 'lastAuthorizationFormChange', 'lastAuthorizeData', 'authorizeData', 'lastAuthorizeRequest']).then((result) => {
-      // Prioritize the most recent data: page replacement > form extraction > form change > other data
-      const data = result.lastAuthorizePageReplacement || result.lastAuthorizeFormData || result.lastAuthorizationFormChange || result.lastAuthorizeData || result.authorizeData || result.lastAuthorizeRequest || null;
+    // Get the last captured authorize endpoint data
+    browser.storage.local.get(['lastAuthorizePageReplacement', 'lastAuthorizeFormData', 'lastAuthorizationFormChange', 'lastAuthorizeData']).then((result) => {
+      const data = result.lastAuthorizePageReplacement || result.lastAuthorizeFormData || result.lastAuthorizationFormChange || result.lastAuthorizeData || null;
       sendResponse({ authorizeData: data });
     });
+    return true;
   }
+
 
   else if (request.action === 'getDomainMap') {
     // Get the domain map
